@@ -81,7 +81,7 @@ async function updateUrls() {
   });
 
   for await (const url of rl) {
-    if (!ulr.includes('!'))
+    if (!url.includes('!'))
       sites.push(new Site(url, ATTACK_COUNT, SUCCESS_MESSAGE));
   }
   return sites;
@@ -99,7 +99,7 @@ async function startAttackSites() {
       Site.success
     }, Denied: ${Site.denied}`
   );
-  setTimeout(starts, DELAY_BETWEEN_ATTACK);
+  setTimeout(startAttackSites, DELAY_BETWEEN_ATTACK);
 }
 
 startAttackSites();
